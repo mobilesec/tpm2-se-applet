@@ -564,13 +564,20 @@ public class TPM {
 				case TPM_CC_PCR_Extend:
 				case TPM_CC_PCR_SetAuthValue:
 				case TPM_CC_PCR_Reset:
-					return tpm2Session.handlePcrCommand(buffer, offset, length, commandCode, responseBuffer, offsetResponse);
-	
+					if(commandTag  == TPM_ST_SESSION){ 
+						return tpm2Session.handlePcrCommand(buffer, offset, length, commandCode, responseBuffer, offsetResponse);
+					}else{
+						return writeRcBadTag(responseBuffer, offsetOut);
+					} 
 				case TPM_CC_PCR_Read:
 					return handlePcrReadCommand(buffer, offset, length, responseBuffer, offsetResponse);
 	
 				case TPM_CC_Quote:
-					return tpm2Session.handleQuoteCommand(buffer, offset, length, responseBuffer, offsetResponse);
+					if(commandTag == TPM_ST_SESSION){ 
+						 return tpm2Session.handleQuoteCommand(buffer, offset, length, responseBuffer, offsetResponse);
+					}else{
+						return writeRcBadTag(responseBuffer, offsetOut);
+					} 
 	
 				case TPM_CC_ReadPublic:
 					return handleReadPublicCommand(buffer, offset, length, responseBuffer, offsetResponse);
@@ -771,6 +778,7 @@ public class TPM {
 		 * command.
 		 */
 		private static final byte SESSION_ATTRIBUTE_CLEAR_SESSION = 0;
+		private static final byte MASK_FIRST_BIT = 0x01;
 
 		// TODO remove
 		private short getSessionKey(byte[] buffer, short offset) {
@@ -912,7 +920,7 @@ public class TPM {
 		}
 
 		/**
-		 * Handles PCR operation (TPM_CC_PcrExtend and TPM_CC_PcrSetAuthValue).
+		 * Handles PCR operation (TPM_CC_PcrExtend, TPM_CC_PcrSetAuthValue, TPM_CC_PCR_reset).
 		 * 
 		 * @param buffer
 		 *            the buffer containing the command
@@ -978,9 +986,7 @@ public class TPM {
 
 			}
 
-			if (sessionAttribute == SESSION_ATTRIBUTE_CLEAR_SESSION) {
-				resetSession();
-			} // Else keep session state.
+			resetSessionIfRequested();
 			return writeRcSuccess(responseBuffer, offsetResponse, TPM_ST_SESSION);
 		}
 
@@ -1089,9 +1095,7 @@ public class TPM {
 			if (outOffset == 0) {
 				return writeRcVer1(responseBuffer, offsetResponse, TPM_RC_NORESULT);
 			}
-			if (sessionAttribute == SESSION_ATTRIBUTE_CLEAR_SESSION) {
-				resetSession();
-			} // Else keep session state.
+			resetSessionIfRequested();
 			return (short) (outOffset - offsetResponse);
 		}
 
@@ -1152,8 +1156,7 @@ public class TPM {
 			if (!verifyCommandHmac(buffer, (short) (offset + OFFSET_COMMAND_CODE), (short) (offset + OFFSET_HANDLE_A), (short) 1, offsetAuthHmac, offsetParameter, lengthParameter)) {
 				// TODO Increment DA counter if required
 				// TODO remove comment
-				// return writeRcFmt1(responseBuffer, offsetResponse,
-				// TPM_RC_FMT1_AUTH_FAIL);
+				 return writeRcFmt1(responseBuffer, offsetResponse,  TPM_RC_FMT1_AUTH_FAIL);
 			}
 			return 0;
 		}
@@ -1394,13 +1397,8 @@ public class TPM {
 
 			short offset = offsetResponse;
 
-			getRandom(nonceTpm, offsetResponse, initialNonceSize);
-
-			// TODO remove
-			for (short i = 0; i < initialNonceSize; i++) {
-				nonceTpm[i] = (byte) i;
-			}
-
+			getRandom(nonceTpm, offsetResponse, initialNonceSize); 
+			
 			lengthSessionKey = computeSessionKey();
 			// Clear session buffer used during session key computation.
 			Util.arrayFillNonAtomic(sessionBuffer, (short) 0, (short) sessionBuffer.length, (byte) 0x00);
@@ -1512,11 +1510,8 @@ public class TPM {
 			offset = Util.setShort(outputBuffer, offset, (short) 0);
 			offset = Util.setShort(outputBuffer, offset, counter);
 
-			// Copy Label-ATH, 0x00, nonceTPM, nonceCaller,
+			// Copy Label-ATH, nonceTPM, nonceCaller,
 			offset = Util.arrayCopy(ATH, (short) 0, outputBuffer, offset, (short) ATH.length);
-			outputBuffer[offset] = 0x00;
-			offset += 1;
-
 			offset = Util.arrayCopy(nonceTpm, (short) 0, outputBuffer, offset, initialNonceSize);
 			offset = Util.arrayCopy(nonceCaller, (short) 0, outputBuffer, offset, initialNonceSize);
 
@@ -1529,7 +1524,6 @@ public class TPM {
 			} // else not supported should be handled before calling this
 				// function.
 			return (short) (offset - offsetOutput);
-
 		}
 
 		/**
@@ -1703,7 +1697,17 @@ public class TPM {
 				offsetOutput = Util.setShort(outputBuffer, offsetOutput, MessageDigest.LENGTH_SHA);
 				offsetOutput += messageDigestSHA1.doFinal(outputBuffer, offsetOutput, (short) 0, outputBuffer, offsetOutput);
 			}
+			resetSessionIfRequested();
 			return offsetOutput;
+		}
+		
+		/**
+		 * Checks the current attribute and resets the session if reset is requested.
+		 */
+		private void  resetSessionIfRequested(){
+			if((byte)(sessionAttribute & MASK_FIRST_BIT) == SESSION_ATTRIBUTE_CLEAR_SESSION){
+				resetSession();
+			}
 		}
 
 	}
@@ -2102,7 +2106,7 @@ public class TPM {
 	}
 
 	private void tpmRestart() {
-		tpmResetCount++;
+		tpmRestartCount++;
 		tpm2Session.resetSession();
 		resetPlaformPcrs();
 	}
@@ -2133,8 +2137,10 @@ public class TPM {
 	 * @return the new offset in the output buffer.
 	 */
 	private short getRandom(byte[] outputBuffer, short offset, short size) {
-		try {
+		try { 
 			randomData.generateData(outputBuffer, offset, size);
+			// TODO remove (added for test)
+			Util.arrayFillNonAtomic(outputBuffer, offset, size, (byte)0x01);
 			return (short) (offset + size);
 		} catch (CryptoException e) {
 			return offset;

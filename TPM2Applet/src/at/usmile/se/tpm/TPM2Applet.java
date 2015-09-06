@@ -17,7 +17,7 @@ import javacardx.apdu.ExtendedLength;
  * 
  * TPM2 Applet class.
  * 
- * @author user endalkachew.asnake
+ * @author endalkachew.asnake
  *
  */
 public class TPM2Applet extends Applet implements ExtendedLength{
@@ -28,13 +28,15 @@ public class TPM2Applet extends Applet implements ExtendedLength{
 	/** Extended buffer for processing command and responses. */
 	byte[] extendedBuffer;
 	
+	private final static short 	EXTENDED_APDU_BUFFER_SIZE = 1024;
+	
 	/** A command code for all commands that should be processed by the TPM implementation. */
 	private static final byte TPM_APDU_COMMAND_CODE = 0x00;
 	
 	
 	private TPM2Applet(){
 		tpm = new TPM();
-		extendedBuffer = new byte[1024];
+		extendedBuffer = new byte[EXTENDED_APDU_BUFFER_SIZE];
 		register();
 	}
 	
@@ -50,20 +52,32 @@ public class TPM2Applet extends Applet implements ExtendedLength{
 		}
 		short lengthResponse = 0;
 
-		byte[] buf = apdu.getBuffer();
-		switch (buf[ISO7816.OFFSET_INS]) {
-			
-			case (byte) TPM_APDU_COMMAND_CODE:
-				lengthResponse = tpm.processCommand(buf, ISO7816.OFFSET_CDATA, (short)(buf[ISO7816.OFFSET_LC] & 0xff), extendedBuffer, (short)0);			
+		
+		byte[] buffer = apdu.getBuffer();
+		switch (buffer[ISO7816.OFFSET_INS]) {
+		
+			case (byte) TPM_APDU_COMMAND_CODE:		
+				short receivedLen = apdu.setIncomingAndReceive();
+				short totalLength = apdu.getIncomingLength();
+		 
+				short incomingOffset = (short)0; 
+				Util.arrayCopyNonAtomic(buffer, ISO7816.OFFSET_CDATA, extendedBuffer, incomingOffset, receivedLen); 
+				while(receivedLen > (short)0){
+					incomingOffset += receivedLen;
+					receivedLen = apdu.receiveBytes((short)0);
+					Util.arrayCopyNonAtomic(buffer, (short)0, extendedBuffer, incomingOffset, receivedLen); 
+				}
+				lengthResponse = tpm.processCommand(extendedBuffer, (short)0, totalLength, extendedBuffer, (short)0);			
 				sendData(apdu, lengthResponse);			
 				break;
-			
+				  
 			default:
 				ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
 		}
 	}
 	
-	void sendData(APDU apdu, short length) {
+	
+	private void sendData(APDU apdu, short length) {
 	    byte[] buffer = apdu.getBuffer(); 
 	    short le = apdu.setOutgoing();
 	    if(le != length){ 
