@@ -17,57 +17,20 @@ import javacard.security.RandomData;
  */
 public class TPM {
 
-	// ///////----- Start TPM Structure Constants-----////////
+	/////////----- Start TPM Structure Constants-----////////
 
-	// TPM handle types. The type of the entity is indicated by the MSO (Most
-	// Significant octate) of its handle.
+	/** TPM handle types. The type of the entity is indicated by the MSO (Most Significant octate) of its handle. */
 	/** Handle type for PCR */
 	private static final byte TPM_HT_PCR = 0x00;
-
-	/** Handle type for NV index */
-	private static final byte TPM_HT_NV = 0x01;
-
-	/**
-	 * Loaded Authorization Session â€“ used only in the context of
-	 * TPM2_GetCapability This type references both loaded HMAC and loaded
-	 * policy authorization sessions.
-	 */
-	private static final byte TPM_HT_LOADED_SESSION = 0x02;
-
-	/**
-	 * Policy Authorization Session â€“ assigned by the TPM when the session is
-	 * created.
-	 */
-	private static final byte TPM_HT_POLICY_SESSION = 0x03;
-
-	/**
-	 * Active Authorization Session â€“ used only in the context of
-	 * TPM2_GetCapability. This type references saved authorization session
-	 * contexts for which the TPM is maintaining tracking information.
-	 */
-	private static final byte TPM_HT_ACTIVE_SESSION = 0x03;
+ 
 
 	/** Permanent values. */
-	private static final byte TPM_HT_PERMANENT = 0x40;
-
-	/**
-	 * Transient Objects â€“ assigned by the TPM when an object is loaded into
-	 * transient-object memory or when a persistent object is converted to a
-	 * transient object.
-	 */
-	private static final byte TPM_HT_TRANSIENT = (byte) 0x80;
-
-	/**
-	 * Persistent Objects â€“ assigned by the TPM when a loaded transient object
-	 * is made persistent.
-	 */
-	private static final byte TPM_HT_PERSISTENT = (byte) 0x81;
+	private static final byte TPM_HT_PERMANENT = 0x40;  
 
 	// Permanent handles that can not be changed type 0x40.
 
 	/**
-	 * A handle references the Storage Primary Seed (SPS), the ownerAuth, and
-	 * the ownerPolicy.
+	 * A handle references the Storage Primary Seed (SPS), the ownerAuth, and the ownerPolicy.
 	 */
 	private static final short TPM_RH_OWNER = 0x0001;
 
@@ -207,14 +170,19 @@ public class TPM {
 
 	private static final short TPM_CC_PCR_SetAuthValue = 0x0183; 
 
-	private static final short TPM_CC_Quote = 0x0158;
-
+	private static final short TPM_CC_Quote = 0x0158; 
+	
 	private static final short TPM_CC_ReadPublic = 0x0173;
 
 	private static final short TPM_CC_StartAuthSession = 0x0176;
 	
 	private static final short TPM_CC_GetRandom = 0x017B;
-
+	
+	/** Custom command to store externally signed public key certificate of the endorsement key. */
+	private static final short Custom_CC_Store_EndorcementCertificate = 0x0001;
+	/** Custom command to read the public part of the endorsement key. */
+	private static final short Custom_CC_read_endorsementPublicKey = 0x0002;
+	
 	// /////////// TPM label definitions ////////
 
 	private static final byte[] ATH = new byte[] { 0x41, 0x54, 0x48, 0x00 };
@@ -316,8 +284,9 @@ public class TPM {
 	private short firmwareVersion;
 
 	private TPM2_RSA_Key endorsementKeyPrimaryKey;
+	private static short ENDORSMENT_KEY_HANDLE_NUMBER = 1;
 
-	private static final short TPM_RSA_KEY_SIZE = 512;
+	private static final short TPM_RSA_KEY_SIZE = 2048;
 
 	private static byte keyAttributeSignAndDecrypt = 0x06;
 
@@ -374,9 +343,9 @@ public class TPM {
 	/**
 	 * Public constructor. Performs required memory and object initialization. 
 	 */
-	public TPM() {
+	public TPM(byte[] buffer, short installParameterOffset, short installParamLength) {
 		
-		pcrList = new TPM2_PCR[]  { new TPM2_PCR((short) 0, (short) 1), new TPM2_PCR((short) 1, (short) 1), new TPM2_PCR((short) 2, (short) 1), new TPM2_PCR((short) 3, (short) 1), new TPM2_PCR((short) 4, (short) 1),
+		pcrList = new TPM2_PCR[] { new TPM2_PCR((short) 0, (short) 1), new TPM2_PCR((short) 1, (short) 1), new TPM2_PCR((short) 2, (short) 1), new TPM2_PCR((short) 3, (short) 1), new TPM2_PCR((short) 4, (short) 1),
 									new TPM2_PCR((short) 5, (short) 1), new TPM2_PCR((short) 6, (short) 1), new TPM2_PCR((short) 7, (short) 1), new TPM2_PCR((short) 8, (short) 1), new TPM2_PCR((short) 9, (short) 1),
 									new TPM2_PCR((short) 10, (short) 1),new TPM2_PCR((short) 11, (short) 1),new TPM2_PCR((short) 12, (short) 1),new TPM2_PCR((short) 13, (short) 1),new TPM2_PCR((short) 14, (short) 1),
 									new TPM2_PCR((short) 15, (short) 1),new TPM2_PCR((short) 16, (short) 1),new TPM2_PCR((short) 17, (short) 1),new TPM2_PCR((short) 18, (short) 1),new TPM2_PCR((short) 19, (short) 1),
@@ -389,7 +358,8 @@ public class TPM {
 
 		tpm_su = TPM_SU_CLEAR;
 
-		endorsementKeyPrimaryKey = new TPM2_RSA_Key(TPM_RSA_KEY_SIZE, TPM_HT_PERMANENT, (short) 0x01, keyAttributeSignAndDecrypt);
+		endorsementKeyPrimaryKey = new TPM2_RSA_Key(TPM_RSA_KEY_SIZE, TPM_HT_PERMANENT, ENDORSMENT_KEY_HANDLE_NUMBER, keyAttributeSignAndDecrypt, buffer, installParameterOffset, installParamLength);
+		 
 		randomData = RandomData.getInstance(RandomData.ALG_SECURE_RANDOM);
 	}
 
@@ -520,23 +490,37 @@ public class TPM {
 		 */
 		public short processCommand(byte[] buffer, short offset, short length, byte[] responseBuffer, short offsetResponse) {
 
-			// Perform header validation.
-
-			short offsetOut = offsetResponse;
+			// Perform header validation. 
 
 			short commandTag = getCommandTag(buffer, offset);
 			// Check tag.
 			if (!hasValidTag(commandTag)) {
-				return writeRcBadTag(responseBuffer, offsetOut);
+				return writeRcBadTag(responseBuffer, offsetResponse);
 			}
 
 			// Check length
 			short expectedLength = getCommandLength(buffer, offset);
 			if (length < expectedLength) {
-				return writeRcVer1(responseBuffer, offsetOut, TPM_RC_VER1_COMMAND_SIZE);
+				return writeRcVer1(responseBuffer, offsetResponse, TPM_RC_VER1_COMMAND_SIZE);
 			}
 
 			short commandCode = getCommandCode(buffer, offset);
+			
+			// Handle required configuration(Personalization of the TPM) before startup command.  
+			// - Storing signed certificate for the keys used in this implementation.
+			// - Setting Auth values for keys.
+			if(startupCommandExpected){
+				switch (commandCode) {
+				case Custom_CC_read_endorsementPublicKey:
+					return getEndorsmentPublicKey(responseBuffer, offsetResponse); 
+					
+				case Custom_CC_Store_EndorcementCertificate:
+					return storeEndorsmentPublicKeyCertificate(buffer, offset, expectedLength, responseBuffer, offsetResponse);
+					 
+				default:
+					break;
+				}
+			}
 
 			// Return if startup command is not received when it is expected or is received when it is not expected.
 			if (startupCommandExpected && commandCode != TPM_CC_Startup || !startupCommandExpected && commandCode ==TPM_CC_Startup) {
@@ -554,10 +538,6 @@ public class TPM {
 				case TPM_CC_Shutdown:
 					return handleShutdownCommand(buffer, offset, length, responseBuffer, offsetResponse);
 	
-				case 0x44:
-					// TODO remove
-					return tpm2Session.getSessionKey(responseBuffer, offsetResponse);
-	
 				case TPM_CC_StartAuthSession:
 					return tpm2Session.handleStartAuthSessionCommand(buffer, offset, length, responseBuffer, offsetResponse);
 	
@@ -567,8 +547,9 @@ public class TPM {
 					if(commandTag  == TPM_ST_SESSION){ 
 						return tpm2Session.handlePcrCommand(buffer, offset, length, commandCode, responseBuffer, offsetResponse);
 					}else{
-						return writeRcBadTag(responseBuffer, offsetOut);
+						return writeRcBadTag(responseBuffer, offsetResponse);
 					} 
+					
 				case TPM_CC_PCR_Read:
 					return handlePcrReadCommand(buffer, offset, length, responseBuffer, offsetResponse);
 	
@@ -576,18 +557,18 @@ public class TPM {
 					if(commandTag == TPM_ST_SESSION){ 
 						 return tpm2Session.handleQuoteCommand(buffer, offset, length, responseBuffer, offsetResponse);
 					}else{
-						return writeRcBadTag(responseBuffer, offsetOut);
+						return writeRcBadTag(responseBuffer, offsetResponse);
 					} 
 	
 				case TPM_CC_ReadPublic:
-					return handleReadPublicCommand(buffer, offset, length, responseBuffer, offsetResponse);
+					return handleReadPublicCommand(buffer, offset, length, responseBuffer, offsetResponse); 
 					
 				case TPM_CC_GetRandom:
 					return handleGetRandomCommand(buffer, offset, length, responseBuffer, offsetResponse);
 	
 				default:
 					// Unsupported command code.
-					return writeRcVer1(responseBuffer, offsetOut, TPM_RC_VER1_COMMAND_CODE);
+					return writeRcVer1(responseBuffer, offsetResponse, TPM_RC_VER1_COMMAND_CODE);
 			}
 
 		}
@@ -779,13 +760,7 @@ public class TPM {
 		 */
 		private static final byte SESSION_ATTRIBUTE_CLEAR_SESSION = 0;
 		private static final byte MASK_FIRST_BIT = 0x01;
-
-		// TODO remove
-		private short getSessionKey(byte[] buffer, short offset) {
-			Util.arrayCopy(sessionKey, (short) 0, buffer, offset, lengthSessionKey);
-			return lengthSessionKey;
-		}
-
+ 
 		/**
 		 * Constructor. Performs required memory initialization for session
 		 * parameters.
@@ -825,10 +800,8 @@ public class TPM {
 			lengthSessionKey = 0;
 			sessionAttribute = 0;
 			resourceHandleNumber = 0;
-			bindType = 0;
-			bindType = 0;
-			resourceHandleNumber = 0;
-
+			bindType = 0; 
+			
 			messageDigestSHA1.reset();
 			messageDigestSHA256.reset();
 
@@ -886,7 +859,7 @@ public class TPM {
 				lengthSalt = decryptSalt(buffer, inputOffset, lengthEncryptedSalt);
 
 				if (lengthSalt == 0) {
-					// TODO return error. Decryption of salt value failed
+					return writeRcVer1(responseBuffer, offsetResponse, TPM_RC_NORESULT);
 				}
 				inputOffset += lengthEncryptedSalt;
 			} else {
@@ -968,12 +941,12 @@ public class TPM {
 
 			} else if (commandCode == TPM_CC_PCR_SetAuthValue) {
 
-				short algorithmId = Util.getShort(buffer, inputOffset);
-				/** Algorithm should have same output length of as the supported  PCR_AUTH_VALUE_LENGTH. (only fixed length auth value is supported) */
-				if (algorithmId != TPM_ALG_SHA256) {
-					return writeRcFmt1(responseBuffer, offsetResponse, TPM_RC_FMT1_HASH);
+				short authHmacLength = Util.getShort(buffer, inputOffset);
+				 
+				if(authHmacLength != PCR_AUTH_VALUE_LENGTH){
+					return writeRcVer1(responseBuffer, offsetResponse, TPM_RC_NORESULT);
 				}
-				inputOffset += LENGTH_TPM2B;
+				inputOffset += LENGTH_TPM2B; 
 				setPCRAuthValue(resourceHandleNumber, buffer, inputOffset);
 
 			} else if (commandCode == TPM_CC_PCR_Reset) {
@@ -1005,7 +978,7 @@ public class TPM {
 		 *            the offset in responseBuffer where to start writing from.
 		 * @return the length of the response.
 		 */
-		private short handleQuoteCommand(byte[] buffer, short offset, short length, byte[] responseBuffer, short offsetResponse) {
+		public short handleQuoteCommand(byte[] buffer, short offset, short length, byte[] responseBuffer, short offsetResponse) {
 
 			short inputOffset = (short) (offset + OFFSET_HANDLE_A);
 
@@ -1154,9 +1127,8 @@ public class TPM {
 			short lengthParameter = (short) (length + offset - offsetParameter);
 
 			if (!verifyCommandHmac(buffer, (short) (offset + OFFSET_COMMAND_CODE), (short) (offset + OFFSET_HANDLE_A), (short) 1, offsetAuthHmac, offsetParameter, lengthParameter)) {
-				// TODO Increment DA counter if required
-				// TODO remove comment
-				 return writeRcFmt1(responseBuffer, offsetResponse,  TPM_RC_FMT1_AUTH_FAIL);
+				// Increment DA counter if required
+				return writeRcFmt1(responseBuffer, offsetResponse,  TPM_RC_FMT1_AUTH_FAIL);
 			}
 			return 0;
 		}
@@ -1375,9 +1347,7 @@ public class TPM {
 		private short decryptSalt(byte[] inputBuffer, short inputOffset, short length) {
 			switch (tpmKey) {
 			case 0x00:
-				return endorsementKeyPrimaryKey.decrypt(inputBuffer, inputOffset, length, salt, (short) 0);
-			case 0x01:
-				return (short) 0;
+				return endorsementKeyPrimaryKey.decrypt(inputBuffer, inputOffset, length, salt, (short) 0); 
 			default:
 				break;
 			}
@@ -1476,12 +1446,11 @@ public class TPM {
 			}
 
 			// TODO correct comment
-			/** Session key generation operation. 
-			sessionKey KDFa(sessionAlg, (authValue || salt), ATH, nonceTPM, nonceCaller, bits)
-			 KDFa -> K(i) = HMAC (Ki , [i] || Label || 00 || Context || [L])
-			 H(K XOR opad || H(K XOR ipad || data)) */
-
-			/** Since the number of bits required in the session same as the the essionAlg (authHash),
+			// Session key generation operation. 
+			// sessionKey KDFa(sessionAlg, (authValue || salt), ATH, nonceTPM, nonceCaller, bits)
+			// KDFa -> K(i) = HMAC (Ki , [i] || Label || 00 || Context || [L]) 
+			
+			/** Since the number of bits required in the session same as the sessionAlg (authHash),
 			 only the first round of KDFa is enough to generate required  number of bits for the session key. */
 			short lengthKDFaData = concatSessionKDFaData((short) 1, authHash, sessionBuffer, (short) (HMAC_BLOCK_SIZE * 2));
 			return computeHmac(sessionBuffer, (short) 0, lengthHmacKey, lengthKDFaData, sessionKey, (short) 0);
@@ -1940,7 +1909,7 @@ public class TPM {
 	}
 
 	/**
-	 * Gets public area of RSA keys.
+	 * Gets public key certificate of RSA keys.
 	 * 
 	 * @param buffer
 	 *            the buffer containing the TPM command.
@@ -1968,10 +1937,10 @@ public class TPM {
 		short offsetParameter = outOffset;
 
 		if (handleType == TPM_HT_PERMANENT) {
-			if (handleNumber == 1) {
+			if (handleNumber == endorsementKeyPrimaryKey.getHandleNumber()) {
 				outOffset = Util.setShort(responseBuffer, outOffset, endorsementKeyPrimaryKey.getKeySize());
-				outOffset = endorsementKeyPrimaryKey.getPublicKey(responseBuffer, outOffset);
-				// Write the name
+				outOffset = endorsementKeyPrimaryKey.getPublicKeyCertificate(responseBuffer, outOffset);
+				// Write the name (handle)
 				outOffset = Util.setShort(responseBuffer, outOffset, TPM_HANDLE_SIZE);
 				outOffset = TPMHandleUtil.writeHandle(TPM_HT_PERMANENT, (short) 1, responseBuffer, outOffset);
 			} else {
@@ -1989,6 +1958,42 @@ public class TPM {
 		writeRcHeader(responseBuffer, offsetResponse, TPM_ST_NO_SESSION, responseSize, TPM_RC_SUCCESS);
 
 		return responseSize;
+	}
+	
+	/**
+	 * Stores the public key certificate of the endorsment key. 
+	 * (This is not standard TPM command and can only be called before startup).
+	 * It used for setting up the endorsement key certificate created by an external entity. 
+	 * Because the the RSA keys used in this implementation are created by the applet during installation, signing the signature will require to read the public part of the key and storing the corresponding signature.) 
+	 * 
+	 * @param buffer
+	 *            the buffer containing the command.
+	 * @param offset
+	 *            the offset in buffer from where the command starts..
+	 * @param length
+	 *            the length of the command.
+	 * @param responseBuffer
+	 *            the response buffer.
+	 * @param offsetResponse
+	 *            the offset in responseBuffer where to start writing from.
+	 * @return the length of the response.
+	 * */
+	private short storeEndorsmentPublicKeyCertificate(byte[] buffer, short offset, short length, byte[] responseBuffer, short offsetResponse){
+		endorsementKeyPrimaryKey.setPublicKeyCertificate(buffer, offset, length);
+		return writeRcSuccess(responseBuffer, offsetResponse, TPM_ST_NO_SESSION);
+	}
+	
+	/** 
+	 * Gets the public part of the endorsment key to be signed externally. (This is not standard TPM command and can only be called before startup).
+	 *
+	 * @param responseBuffer
+	 *			  the response buffer.
+	 * @param offsetResponse
+	 *            the offset in responseBuffer where to start writing from.
+	 * @return the length of the response.
+	 */
+	private short getEndorsmentPublicKey(byte[] responseBuffer, short offsetResponse){
+		return endorsementKeyPrimaryKey.getPublicKey(responseBuffer, offsetResponse);
 	}
 	
 	/**
@@ -2052,8 +2057,8 @@ public class TPM {
 		// No handle or authorization is required. Parmeter follows the command
 		// code.
 		this.tpm_su = Util.getShort(buffer, parameterOffset);
-		short outOffset = writeRcSuccess(responseBuffer, offsetResponse, TPM_ST_NO_SESSION);
-		return (short) (outOffset - offsetResponse);
+		startupCommandExpected = true;
+		return writeRcSuccess(responseBuffer, offsetResponse, TPM_ST_NO_SESSION);
 	}
 
 	/**
@@ -2139,8 +2144,6 @@ public class TPM {
 	private short getRandom(byte[] outputBuffer, short offset, short size) {
 		try { 
 			randomData.generateData(outputBuffer, offset, size);
-			// TODO remove (added for test)
-			Util.arrayFillNonAtomic(outputBuffer, offset, size, (byte)0x01);
 			return (short) (offset + size);
 		} catch (CryptoException e) {
 			return offset;
