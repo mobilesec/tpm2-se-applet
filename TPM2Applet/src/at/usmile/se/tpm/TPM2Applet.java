@@ -12,7 +12,7 @@ import javacard.framework.Util;
  * 
  * TPM2 Applet class.
  * 
- * @author endalkachew.asnake
+ * @author Endalkachew Asnake
  *
  */
 public class TPM2Applet extends Applet {

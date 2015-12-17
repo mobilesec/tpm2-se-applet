@@ -6,7 +6,7 @@ import javacard.security.MessageDigest;
 /**
  * Represents TPM2 PCR object.
  * 
- * @author endalkachew.asnake
+ * @author Endalkachew Asnake
  *
  */
 public class TPM2_PCR {

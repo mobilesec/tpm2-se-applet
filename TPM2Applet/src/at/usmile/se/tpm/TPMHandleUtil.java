@@ -5,7 +5,7 @@ import javacard.framework.Util;
 /**
  * Defines utils for TPM handles.
  * 
- * @author endalkachew.asnake
+ * @author Endalkachew Asnake
  */ 
 public class TPMHandleUtil {  
   

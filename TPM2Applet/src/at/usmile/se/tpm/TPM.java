@@ -12,7 +12,7 @@ import javacard.security.RandomData;
 /**
  * TPM main implementation class.
  * 
- * @author endalkachew.asnake
+ * @author Endalkachew Asnake
  * 
  */
 public class TPM {
@@ -284,27 +284,24 @@ public class TPM {
 	private short firmwareVersion;
 
 	private TPM2_RSA_Key endorsementKeyPrimaryKey;
-	private static short ENDORSMENT_KEY_HANDLE_NUMBER = 1;
+	private static short ENDORSEMENT_KEY_HANDLE_NUMBER = 1;
 
 	private static final short TPM_RSA_KEY_SIZE = 2048;
 
-	private static byte keyAttributeSignAndDecrypt = 0x06;
+	private static byte KEY_ATTRIBUTE_SIGN_AND_DECRYPT = 0x06;
 
 	private TPMCommandProcessor tpmCommandProcessor;
 
 	private TPM2Session tpm2Session;
 
 	private static final byte MIN_PCR_SELECT_SIZE = 3;
-	private static final byte PLATFORM_PCR_SIZE = 24;
-	private static final byte LENGTH_PCR_UPDATE_COUNTER = 4;
-	private static final byte LENGTH_PCR_DIGEST_COUNT = 4;
+	private static final byte PLATFORM_PCR_SIZE = 24; 
 	private static final byte LENGTH_PCR_SELECTION_COUNT = 4;
 	private static final byte LENGTH_TPM2B = 2;
 
 	private static final short ALG_SHA256_OUTPUT_BITS_COUNT = 256;
 	private static final short ALT_SHA256_OUTPUT_BYTES_COUNT = 32;
-	private static final short ALG_SHA1_OUTPUT_BITS_COUNT = 160;
-	private static final short ALG_SHA1_OUTPUT_BYTES_COUNT = 20;
+	private static final short ALG_SHA1_OUTPUT_BITS_COUNT = 160; 
 
 	/** Defines length of default TPM Response codes. */
 	private static final short LENGTH_TPM_RC_DEFAULT = 10;
@@ -358,7 +355,7 @@ public class TPM {
 
 		tpm_su = TPM_SU_CLEAR;
 
-		endorsementKeyPrimaryKey = new TPM2_RSA_Key(TPM_RSA_KEY_SIZE, TPM_HT_PERMANENT, ENDORSMENT_KEY_HANDLE_NUMBER, keyAttributeSignAndDecrypt, buffer, installParameterOffset, installParamLength);
+		endorsementKeyPrimaryKey = new TPM2_RSA_Key(TPM_RSA_KEY_SIZE, TPM_HT_PERMANENT, ENDORSEMENT_KEY_HANDLE_NUMBER, KEY_ATTRIBUTE_SIGN_AND_DECRYPT, buffer, installParameterOffset, installParamLength);
 		 
 		randomData = RandomData.getInstance(RandomData.ALG_SECURE_RANDOM);
 	}
@@ -512,10 +509,10 @@ public class TPM {
 			if(startupCommandExpected){
 				switch (commandCode) {
 				case Custom_CC_read_endorsementPublicKey:
-					return getEndorsmentPublicKey(responseBuffer, offsetResponse); 
+					return getEndorsementPublicKey(responseBuffer, offsetResponse); 
 					
 				case Custom_CC_Store_EndorcementCertificate:
-					return storeEndorsmentPublicKeyCertificate(buffer, offset, expectedLength, responseBuffer, offsetResponse);
+					return storeEndorsementPublicKeyCertificate(buffer, offset, expectedLength, responseBuffer, offsetResponse);
 					 
 				default:
 					break;
@@ -1939,7 +1936,11 @@ public class TPM {
 		if (handleType == TPM_HT_PERMANENT) {
 			if (handleNumber == endorsementKeyPrimaryKey.getHandleNumber()) {
 				outOffset = Util.setShort(responseBuffer, outOffset, endorsementKeyPrimaryKey.getKeySize());
-				outOffset = endorsementKeyPrimaryKey.getPublicKeyCertificate(responseBuffer, outOffset);
+				if(endorsementKeyPrimaryKey.hasCertificate()){ 
+					outOffset = endorsementKeyPrimaryKey.getPublicKeyCertificate(responseBuffer, outOffset);
+				}else{
+					outOffset = endorsementKeyPrimaryKey.getPublicKey(responseBuffer, outOffset);
+				}
 				// Write the name (handle)
 				outOffset = Util.setShort(responseBuffer, outOffset, TPM_HANDLE_SIZE);
 				outOffset = TPMHandleUtil.writeHandle(TPM_HT_PERMANENT, (short) 1, responseBuffer, outOffset);
@@ -1961,7 +1962,7 @@ public class TPM {
 	}
 	
 	/**
-	 * Stores the public key certificate of the endorsment key. 
+	 * Stores the public key certificate of the endorsement key. 
 	 * (This is not standard TPM command and can only be called before startup).
 	 * It used for setting up the endorsement key certificate created by an external entity. 
 	 * Because the the RSA keys used in this implementation are created by the applet during installation, signing the signature will require to read the public part of the key and storing the corresponding signature.) 
@@ -1978,13 +1979,13 @@ public class TPM {
 	 *            the offset in responseBuffer where to start writing from.
 	 * @return the length of the response.
 	 * */
-	private short storeEndorsmentPublicKeyCertificate(byte[] buffer, short offset, short length, byte[] responseBuffer, short offsetResponse){
+	private short storeEndorsementPublicKeyCertificate(byte[] buffer, short offset, short length, byte[] responseBuffer, short offsetResponse){
 		endorsementKeyPrimaryKey.setPublicKeyCertificate(buffer, offset, length);
 		return writeRcSuccess(responseBuffer, offsetResponse, TPM_ST_NO_SESSION);
 	}
 	
 	/** 
-	 * Gets the public part of the endorsment key to be signed externally. (This is not standard TPM command and can only be called before startup).
+	 * Gets the public part of the endorsement key to be signed externally. (This is not standard TPM command and can only be called before startup).
 	 *
 	 * @param responseBuffer
 	 *			  the response buffer.
@@ -1992,7 +1993,7 @@ public class TPM {
 	 *            the offset in responseBuffer where to start writing from.
 	 * @return the length of the response.
 	 */
-	private short getEndorsmentPublicKey(byte[] responseBuffer, short offsetResponse){
+	private short getEndorsementPublicKey(byte[] responseBuffer, short offsetResponse){
 		return endorsementKeyPrimaryKey.getPublicKey(responseBuffer, offsetResponse);
 	}
 	
@@ -2143,7 +2144,7 @@ public class TPM {
 	 */
 	private short getRandom(byte[] outputBuffer, short offset, short size) {
 		try { 
-			randomData.generateData(outputBuffer, offset, size);
+			randomData.generateData(outputBuffer, offset, size); 
 			return (short) (offset + size);
 		} catch (CryptoException e) {
 			return offset;

@@ -12,7 +12,7 @@ import javacardx.crypto.Cipher;
 /**
  * Represents TPM2 RSA key.
  * 
- * @author endalkachew.asnake
+ * @author Endalkachew Asnake
  *
  */
 public class TPM2_RSA_Key {
@@ -20,9 +20,9 @@ public class TPM2_RSA_Key {
 	private static final byte LENGTH_AUTH_VALUE = 32;
 	
 	// TODO determine the required length for certificate
-	private static final short LENGTH_CERTIFICATE_BUFFER_RSA_KEY_1024 = 256;
+	private static final short LENGTH_CERTIFICATE_BUFFER_RSA_KEY_1024 = 200;
 	
-	private static final short LENGTH_CERTIFICATE_BUFFER_RSA_KEY_2048 = 512; 
+	private static final short LENGTH_CERTIFICATE_BUFFER_RSA_KEY_2048 = 300; 
 	
 	/** The handle that identifies the key. */
 	private short handleNumber;
@@ -40,7 +40,7 @@ public class TPM2_RSA_Key {
 	
 	private byte[] certificate;
 	
-	/** The attribute specifiying the use of the key. (Sign, decrypt, restricted). */
+	/** The attribute specifying the use of the key. (Sign, decrypt, restricted). */
 	private byte attribute;
 //TODO validate attribute before signing or decrpting.
 	
@@ -49,6 +49,8 @@ public class TPM2_RSA_Key {
 	private Signature signature;
 	
 	private short keySize;
+	
+	private boolean certificateAvailable = false;
 	
  
 	/**
@@ -209,5 +211,15 @@ public class TPM2_RSA_Key {
 	 */
 	public void setPublicKeyCertificate(byte[] inputBuffer, short offset, short length){ 
 		Util.arrayCopy(inputBuffer, offset, certificate, (short)0, (short)certificate.length);
+		certificateAvailable = true;
 	} 
+	
+	/**
+	 * Checks if public key certificate is set.
+	 * 
+	 * @return true if the public key certificate is set, false otherwise.
+	 */
+	public boolean hasCertificate(){
+		return certificateAvailable;
+	}
 }
