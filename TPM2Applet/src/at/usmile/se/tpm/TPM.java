@@ -17,61 +17,23 @@ import javacard.security.RandomData;
  */
 public class TPM {
 
-	/////////----- Start TPM Structure Constants-----////////
 
 	/** TPM handle types. The type of the entity is indicated by the MSO (Most Significant octate) of its handle. */
 	/** Handle type for PCR */
 	private static final byte TPM_HT_PCR = 0x00;
  
 
-	/** Permanent values. */
+	/**  Handle type for permanent values. */
 	private static final byte TPM_HT_PERMANENT = 0x40;  
 
-	// Permanent handles that can not be changed type 0x40.
-
-	/**
-	 * A handle references the Storage Primary Seed (SPS), the ownerAuth, and the ownerPolicy.
-	 */
-	private static final short TPM_RH_OWNER = 0x0001;
 
 	/**
 	 * A handle associated with the null hierarchy, an EmptyAuth authValue, and
-	 * an Empty Policy authPolicy.
+	 * an Empty Policy authPolicy. Is a permanent handle.
 	 */
 	private static final short TPM_RH_NULL = 0x0007;
 
-	/** Authorization value used to indicate a password authorization session */
-	private static final short TPM_RS_PW = 0x0009;
 
-	/**
-	 * References the authorization associated with the dictionary attack
-	 * lockout reset.
-	 */
-	private static final short TPM_RH_LOCKOUT = 0x000A;
-
-	/**
-	 * References the Endorsement Primary seed (EPS) endorsementAuth, and
-	 * endorsementPolicy.
-	 */
-	private static final short TPM_RH_ENDORSEMENT = 0x000B;
-
-	/**
-	 * References the Platform Primary Seed (PPS), platformAuth, and
-	 * platformPolicy.
-	 */
-	private static final short TPM_RH_PLATFORM = 0x000C;
-
-	/**
-	 * Start of a range of authorization values that are vendor-specific. A TPM
-	 * may support any of the values in this range as are needed for
-	 * vendor-specific purposes.
-	 */
-	private static final short TPM_RH_AUTH_00 = 0x0010;
-
-	/** End of the range of vendor-specific authorization values. */
-	private static final short TPM_RH_AUTH_FF = 0x010F;
-
-	// Session handles type = 0x02
 	/**
 	 * HMAC Authorization Session assigned by the TPM when the session is
 	 * created
@@ -81,12 +43,6 @@ public class TPM {
 	/** The first HMAC session handle. */
 	private static final short TPM_HT_HMAC_SESSION_FIRST = 0x0000;
 
-	// TPM session type constants.
-
-	/** Represents HMAC session. */
-	private static final byte TPM_SE_HMAC = 0x00;
-	private static final byte TPM_SE_POLICY_TRIAL = 0x01;
-	private static final byte TPM_SE_TRIAL = 0x03;
 
 	// ///////////////////////// TPM RC Constants ///////////////////////////
 	private static final short TPM_RC_SUCCESS = 0x00;
@@ -102,9 +58,6 @@ public class TPM {
 	/** TPM not initialized. */
 	private static final short TPM_RC_VER1_INITIALIZE = 0x0000;
 
-	/** Commands not being accepted because of a TPM failure. */
-	private static final short TPM_RC_VER1_FAILURE = 0x0001;
-
 	/** CommandSize value is inconsistent with contents of the command buffer. */
 	private static final short TPM_RC_VER1_COMMAND_SIZE = 0x0042;
 
@@ -118,16 +71,10 @@ public class TPM {
 	 */
 	private static final short TPM_RC_NORESULT = 0x0054;
 
-	// //////// RC_FMT1 response codes /////////
-	// Format 1 response codes take the format of (RC_FMT1 + RC).
-	// Set for all format 1 response codes.
+	/** RC_FMT1 response codes
+	 Format 1 response codes take the format of (RC_FMT1 + RC).
+	 Set for all format 1 response codes. */
 	private static final short RC_FMT1 = 0x0080;
-
-	/** Asymmetric algorithm not supported or not correct. */
-	private static final short TPM_RC_FMT1_ASYMMETRIC = 0x0001;
-
-	/** Inconsistent attributes. */
-	private static final short TPM_RC_FMT1_ATTRIBUTES = 0x0002;
 
 	/** Hash algorithm not supported or not appropriate. */
 	private static final short TPM_RC_FMT1_HASH = 0x0003;
@@ -135,19 +82,11 @@ public class TPM {
 	/** Value is out of range or is not correct for the context. */
 	private static final short TPM_RC_FMT1_VALUE = 0x0004;
 
-	/** Key size is not supported. */
-	private static final short TPM_RC_FMT1_KEY_SIZE = 0x0007;
-
 	/** Mode of operation is not supported. */
 	private static final short TPM_RC_FMT1_MODE = 0x0009;
 
-	/** the value of a size parameter is larger or smaller than allowed. */
-	private static final short TPM_RC_FMT1_SIZE = 0x0015;
-
 	/** The handle is not correct for the use. */
 	private static final short TPM_RC_FMT1_HANDLE = 0x000B;
-
-	private static final short TPM_RC_FMT1_RANGE = 0x000D;
 
 	/* The authorization HMAC check failed and DA counter incremented. */
 	private static final short TPM_RC_FMT1_AUTH_FAIL = 0x000E;
@@ -155,9 +94,9 @@ public class TPM {
 	/** Invalid nonce size. */
 	private static final short TPM_RC_FMT1_NONCE = 0x000F;
 
-	// /////// TPM Command Codes /////////
-	// // TPM standard command are 4 bytes long. Values defined here use the two
-	// list significant bytes only for implementation convenience.
+	/** TPM Command Codes 
+	 TPM standard command are 4 bytes long. Values defined here use the two
+	 list significant bytes only for implementation convenience. */
 	private static final short TPM_CC_Startup = 0x0144;
 
 	private static final short TPM_CC_Shutdown = 0x0145;
@@ -183,17 +122,14 @@ public class TPM {
 	/** Custom command to read the public part of the endorsement key. */
 	private static final short Custom_CC_read_endorsementPublicKey = 0x0002;
 	
-	// /////////// TPM label definitions ////////
 
-	private static final byte[] ATH = new byte[] { 0x41, 0x54, 0x48, 0x00 };
-
-	private static final byte[] CFB = new byte[] { 0x43, 0x46, 0x42, 0x00 };
+	/** Constant labels */
+	private static final byte[] ATH = new byte[] { 0x41, 0x54, 0x48, 0x00 }; 
 
 	private static final short TPM_ST_ATTEST_QUOTE = (short) 0x8018;
 
 	private static final byte[] TPM_GENERATED_VALUE = new byte[] { (byte) 0xff, (byte) 0x54, (byte) 0x43, (byte) 0x47 };
-
-	private static final byte TPMI_YES = 1;
+ 
 	private static final byte TPMI_NO = 0;
 
 	/** TPM_SU Constants */
@@ -211,23 +147,8 @@ public class TPM {
 
 	// Definition of (UINT16) TPM_ALG_ID Constants.
 
-	/** Should not occur. */
-	private static final short TPM_ALG_ERROR = 0x0000;
-
-	/** The RSA algorithm. */
-	private static final short TPM_ALG_RSA = 0x0001;
-
 	/** The SHA1 algorithm. */
 	private static final short TPM_ALG_SHA1 = 0x0004;
-
-	/** Hash Message Authentication Code (HMAC) algorithm. */
-	private static final short TPM_ALG_HMAC = 0x0005;
-
-	/** Hash Message Authentication Code (HMAC) algorithm. */
-	private static final short TPM_ALG_AES = 0x0006;
-
-	/** the AES algorithm with various key sizes. */
-	private static final short TPM_ALG_XOR = 0x0008;
 
 	/** The XOR encryption algorithm. */
 	private static final short TPM_ALG_SHA256 = 0x000B;
@@ -237,24 +158,14 @@ public class TPM {
 
 	private static final short TPM_ALG_RSASSA = 0x0014;
 
-	// Symmetric algorithm operation modes.
-	/** Output Feedback mode. */
-	private static final short TPM_ALG_OFB = 0x0041;
-
-	/** Cipher Block Chaining mode. */
-	private static final short TPM_ALG_CBC = 0x0042;
-
-	/** Cipher Feedback mode. */
-	private static final short TPM_ALG_CFB = 0x0043;
-
 	// TPM Command and Response tags
 	private static final short TPM_ST_NO_SESSION = (short) 0x8001;
 
 	private static final short TPM_ST_SESSION = (short) 0x8002;
 
-	// ///////----- End TPM Structure Constants-----////////
 
-	// /// Implementation specific constants and private members//////
+
+   /** Implementation specific constants and private members.*/
 
 	private static final short PCR_AUTH_VALUE_LENGTH = 32;
 
@@ -274,10 +185,7 @@ public class TPM {
 	/* Number of occurrences of TPM Reset since the last TPM2_Clear(). */
 	private short tpmResetCount;
 
-	/*
-	 * number of times that TPM2_Shutdown() or _TPM_Hash_Start have occurred
-	 * since the last TPM Reset or TPM2_Clear().
-	 */
+	/* * number of times that TPM2_Shutdown() or _TPM_Hash_Start have occurred  since the last TPM Reset or TPM2_Clear().*/
 	private short tpmRestartCount;
 
 	/** Version number of the firmware. */
@@ -291,7 +199,6 @@ public class TPM {
 	private static byte KEY_ATTRIBUTE_SIGN_AND_DECRYPT = 0x06;
 
 	private TPMCommandProcessor tpmCommandProcessor;
-
 	private TPM2Session tpm2Session;
 
 	private static final byte MIN_PCR_SELECT_SIZE = 3;
@@ -336,11 +243,15 @@ public class TPM {
 
 	private RandomData randomData;
 
-	
+
 	/**
 	 * Public constructor. Performs required memory and object initialization. 
+	 * 
+	 * @param initializationBuffer a buffer containing data for TPM initialization.
+	 * @param offset the offset in buffer where initialization parameters are stored.
+	 * @param length the length of the initialization data..
 	 */
-	public TPM(byte[] buffer, short installParameterOffset, short installParamLength) {
+	public TPM(byte[] initializationBuffer, short offset, short length) {
 		
 		pcrList = new TPM2_PCR[] { new TPM2_PCR((short) 0, (short) 1), new TPM2_PCR((short) 1, (short) 1), new TPM2_PCR((short) 2, (short) 1), new TPM2_PCR((short) 3, (short) 1), new TPM2_PCR((short) 4, (short) 1),
 									new TPM2_PCR((short) 5, (short) 1), new TPM2_PCR((short) 6, (short) 1), new TPM2_PCR((short) 7, (short) 1), new TPM2_PCR((short) 8, (short) 1), new TPM2_PCR((short) 9, (short) 1),
@@ -355,7 +266,7 @@ public class TPM {
 
 		tpm_su = TPM_SU_CLEAR;
 
-		endorsementKeyPrimaryKey = new TPM2_RSA_Key(TPM_RSA_KEY_SIZE, TPM_HT_PERMANENT, ENDORSEMENT_KEY_HANDLE_NUMBER, KEY_ATTRIBUTE_SIGN_AND_DECRYPT, buffer, installParameterOffset, installParamLength);
+		endorsementKeyPrimaryKey = new TPM2_RSA_Key(TPM_RSA_KEY_SIZE, TPM_HT_PERMANENT, ENDORSEMENT_KEY_HANDLE_NUMBER, KEY_ATTRIBUTE_SIGN_AND_DECRYPT, initializationBuffer, offset, length);
 		 
 		randomData = RandomData.getInstance(RandomData.ALG_SECURE_RANDOM);
 	}
@@ -503,9 +414,9 @@ public class TPM {
 
 			short commandCode = getCommandCode(buffer, offset);
 			
-			// Handle required configuration(Personalization of the TPM) before startup command.  
-			// - Storing signed certificate for the keys used in this implementation.
-			// - Setting Auth values for keys.
+			/** Handle required configuration(Personalization of the TPM) before startup command.  
+			 - Storing signed certificate for the keys used in this implementation.
+			 - Setting Auth values for keys. */
 			if(startupCommandExpected){
 				switch (commandCode) {
 				case Custom_CC_read_endorsementPublicKey:
@@ -524,8 +435,7 @@ public class TPM {
 				return writeRcFmt1(responseBuffer, offsetResponse, TPM_RC_VER1_INITIALIZE);
 			}
 
-			// TODO mode check
-			// TPM failure mode, tpm not initialized
+			// TODO mode check TPM failure mode or if tpm not initialized.
 
 			switch (commandCode) {
 
@@ -1441,11 +1351,10 @@ public class TPM {
 				// Invalid key ..
 				return 0;
 			}
-
-			// TODO correct comment
-			// Session key generation operation. 
-			// sessionKey KDFa(sessionAlg, (authValue || salt), ATH, nonceTPM, nonceCaller, bits)
-			// KDFa -> K(i) = HMAC (Ki , [i] || Label || 00 || Context || [L]) 
+ 
+			/** Session key generation operation. 
+			- sessionKey KDFa(sessionAlg, (authValue || salt), ATH, nonceTPM, nonceCaller, bits)
+			-  KDFa -> K(i) = HMAC (Ki , [i] || Label || 00 || Context || [L]) */
 			
 			/** Since the number of bits required in the session same as the sessionAlg (authHash),
 			 only the first round of KDFa is enough to generate required  number of bits for the session key. */
@@ -2111,6 +2020,9 @@ public class TPM {
 		resetPlaformPcrs();
 	}
 
+	/**
+	 * Performs a TMP restart.
+	 */
 	private void tpmRestart() {
 		tpmRestartCount++;
 		tpm2Session.resetSession();
@@ -2127,6 +2039,9 @@ public class TPM {
 		pcrUpdateCounter = 0;
 	}
 
+	/**
+	 * Performs a TPM resume.
+	 */
 	private void tpmResume() {
 		tpmRestartCount++;
 	}

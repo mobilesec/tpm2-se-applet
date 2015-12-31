@@ -3,7 +3,6 @@ package at.usmile.se.tpm;
 import javacard.framework.Util;
 import javacard.security.KeyBuilder;
 import javacard.security.KeyPair;
-import javacard.security.MessageDigest;
 import javacard.security.RSAPrivateCrtKey;
 import javacard.security.RSAPublicKey;
 import javacard.security.Signature;

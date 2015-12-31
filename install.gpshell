@@ -1,0 +1,17 @@
+mode_211
+enable_trace
+enable_timer
+
+establish_context
+card_connect
+select -AID a000000003000000
+open_sc -security 1 -keyind 0 -keyver 0 -mac_key "mac key value" -enc_key "enc key value" // Open secure channel
+delete -AID 61742e75736d696c652e73652e74706d
+install -file tpm.cap -instParam 000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F -nvDataLimit 1000 -priv 2
+
+card_disconnect
+release_context
+
+
+
+

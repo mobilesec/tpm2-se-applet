@@ -88,14 +88,20 @@ public class TPM2Applet extends Applet {
 				
 				// Clear extended buffer if any response remains from previous command.
 				if(responseLength > 0){
-					clearResponse();
+					clearExtededBuffer();
 				}
 			
+				// Return error if command size is greater than the size of the extended buffer.
+				if((short)(offsetExtendedBuffer + incomingLength) > EXTENDED_APDU_BUFFER_SIZE){
+					clearExtededBuffer();
+					ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
+					return;
+				}
 				Util.arrayCopyNonAtomic(buffer, ISO7816.OFFSET_CDATA, extendedBuffer, offsetExtendedBuffer, incomingLength); 
 				offsetExtendedBuffer += incomingLength;
 				
 				if(buffer[ISO7816.OFFSET_P1] == TPM_APDU_COMMAND_PARAMETER_P1_WAIT_FOR_MORE){
-					// Skip processing command and wait for more data.
+					// skip processing command and wait for more data.
 					return;	 
 				}
 				
@@ -110,7 +116,7 @@ public class TPM2Applet extends Applet {
 				apdu.setOutgoingAndSend((short)0, outgoingLength);  
 				
 				if(outgoingLength == responseLength){
-					clearResponse();
+					clearExtededBuffer();
 				}else{
 					offsetExtendedBuffer = outgoingLength;
 				}
@@ -129,7 +135,7 @@ public class TPM2Applet extends Applet {
 					offsetExtendedBuffer += outgoingLength; 
 					
 					if(offsetExtendedBuffer == responseLength){
-						clearResponse();
+						clearExtededBuffer();
 					}
 				} 
 				break;
@@ -139,8 +145,8 @@ public class TPM2Applet extends Applet {
 		} 
 	}
 	
-	private void clearResponse(){
-		Util.arrayFillNonAtomic(extendedBuffer, (short)0, responseLength, (byte)0);
+	private void clearExtededBuffer(){
+		Util.arrayFillNonAtomic(extendedBuffer, (short)0, EXTENDED_APDU_BUFFER_SIZE, (byte)0);
 		responseLength = 0;
 		offsetExtendedBuffer = 0;
 	}
