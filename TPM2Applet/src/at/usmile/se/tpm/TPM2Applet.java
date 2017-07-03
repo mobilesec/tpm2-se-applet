@@ -1,13 +1,3 @@
- 
-package at.usmile.se.tpm;
- 
-import javacard.framework.Applet;
-import javacard.framework.ISOException;
-import javacard.framework.ISO7816;
-import javacard.framework.APDU;
-import javacard.framework.Util; 
-
- 
 /**
  * 
  * TPM2 Applet class.
@@ -30,6 +20,15 @@ import javacard.framework.Util;
  * limitations under the License.
  */
 
+package at.usmile.se.tpm;
+ 
+import javacard.framework.Applet;
+import javacard.framework.ISOException;
+import javacard.framework.ISO7816;
+import javacard.framework.APDU;
+import javacard.framework.Util; 
+
+ 
 public class TPM2Applet extends Applet {
 	
 	 
